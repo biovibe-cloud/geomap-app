@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, UploadFile, File
+from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr
@@ -8,6 +8,7 @@ import cloudinary
 import cloudinary.uploader
 import os
 import io
+import secrets
 import hashlib
 import json
 import httpx
@@ -15,13 +16,14 @@ import jwt
 from jwt.algorithms import ECAlgorithm
 from PIL import Image
 import piexif
+from datetime import datetime
 
 load_dotenv()
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 cloudinary.config(
     cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
@@ -42,11 +44,27 @@ app.add_middleware(
 
 security = HTTPBearer()
 
-ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp"}
+ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
+MAGIC_BYTES = {
+    b"\xff\xd8\xff": "image/jpeg",
+    b"\x89PNG": "image/png",
+    b"RIFF": "image/webp",
+}
 MAX_FILE_SIZE = 10 * 1024 * 1024
 MAX_PIXELS = 25_000_000
+UPLOAD_RATE_LIMIT: dict = {}
+MAX_UPLOADS_PER_HOUR = 50
 
 _public_key_cache = None
+
+@app.on_event("startup")
+async def startup_event():
+    global _public_key_cache
+    try:
+        _public_key_cache = get_supabase_public_key()
+        print("Clave pública de Supabase cacheada OK")
+    except Exception as e:
+        print(f"Advertencia: no se pudo cachear clave pública: {e}")
 
 def get_supabase_public_key():
     global _public_key_cache
@@ -60,8 +78,14 @@ def get_supabase_public_key():
         return _public_key_cache
     raise Exception("No se encontró clave pública en Supabase")
 
+def detect_mime_from_magic(data: bytes) -> str | None:
+    for magic, mime in MAGIC_BYTES.items():
+        if data[:len(magic)] == magic:
+            return mime
+    return None
+
 class UserObj:
-    def __init__(self, uid):
+    def __init__(self, uid: str):
         self.id = uid
 
 class RegisterRequest(BaseModel):
@@ -72,7 +96,13 @@ class LoginRequest(BaseModel):
     email: EmailStr
     password: str
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+class CreateMapRequest(BaseModel):
+    name: str
+    description: str = ""
+
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+) -> UserObj:
     token = credentials.credentials
     try:
         public_key = get_supabase_public_key()
@@ -90,6 +120,15 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
         raise
     except Exception as e:
         raise HTTPException(status_code=401, detail=f"Token inválido: {str(e)}")
+
+def verify_map_ownership(map_id: str, user_id: str):
+    result = supabase.table("maps")\
+        .select("id")\
+        .eq("id", map_id)\
+        .eq("user_id", user_id)\
+        .execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Mapa no encontrado")
 
 def extract_gps(exif_data: dict):
     try:
@@ -116,23 +155,30 @@ def extract_taken_at(exif_data: dict):
         exif = exif_data.get("Exif", {})
         date_str = exif.get(piexif.ExifIFD.DateTimeOriginal, b"").decode()
         if date_str:
-            from datetime import datetime
             return datetime.strptime(date_str, "%Y:%m:%d %H:%M:%S").isoformat()
     except Exception:
         pass
     return None
 
-@app.get("/")
-def root():
-    return {"status": "ok", "message": "GeoMap API funcionando"}
+def strip_exif(contents: bytes, mime_type: str) -> bytes:
+    try:
+        if mime_type == "image/jpeg":
+            return piexif.remove(contents)
+        img = Image.open(io.BytesIO(contents))
+        buf = io.BytesIO()
+        fmt = "PNG" if mime_type == "image/png" else "WEBP"
+        img.save(buf, format=fmt)
+        return buf.getvalue()
+    except Exception:
+        return contents
+
+# ----------------------------------------------------------------
+# ENDPOINTS
+# ----------------------------------------------------------------
 
 @app.get("/health")
 def health():
-    return {
-        "status": "ok",
-        "supabase_url": SUPABASE_URL,
-        "cloudinary": os.getenv("CLOUDINARY_CLOUD_NAME", "no configurado")
-    }
+    return {"status": "ok"}
 
 @app.post("/auth/register")
 def register(data: RegisterRequest):
@@ -163,29 +209,120 @@ def login(data: LoginRequest):
     except Exception as e:
         raise HTTPException(status_code=401, detail=str(e))
 
+# ----------------------------------------------------------------
+# MAPAS
+# ----------------------------------------------------------------
+
+@app.post("/maps")
+def create_map(
+    data: CreateMapRequest,
+    current_user: UserObj = Depends(get_current_user)
+):
+    result = supabase.table("maps").insert({
+        "user_id": current_user.id,
+        "name": data.name,
+        "description": data.description,
+        "is_public": False
+    }).execute()
+    map_data = result.data[0]
+    return {
+        "map_id": map_data["id"],
+        "name": map_data["name"],
+        "is_public": map_data["is_public"],
+        "created_at": map_data["created_at"]
+    }
+
+@app.get("/maps")
+def list_maps(current_user: UserObj = Depends(get_current_user)):
+    result = supabase.table("maps")\
+        .select("id, name, description, is_public, created_at, updated_at")\
+        .eq("user_id", current_user.id)\
+        .order("created_at", desc=True)\
+        .execute()
+    return result.data
+
+@app.delete("/maps/{map_id}")
+def delete_map(
+    map_id: str,
+    current_user: UserObj = Depends(get_current_user)
+):
+    verify_map_ownership(map_id, current_user.id)
+    supabase.table("maps").delete().eq("id", map_id).execute()
+    return {"message": "Mapa eliminado"}
+
+@app.post("/maps/{map_id}/publish")
+def publish_map(
+    map_id: str,
+    current_user: UserObj = Depends(get_current_user)
+):
+    verify_map_ownership(map_id, current_user.id)
+    raw_token = secrets.token_hex(32)
+    token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+    supabase.table("maps").update({
+        "is_public": True,
+        "embed_token_hash": token_hash
+    }).eq("id", map_id).execute()
+    return {
+        "message": "Mapa publicado. Guarda este token — no se puede recuperar.",
+        "embed_token": raw_token
+    }
+
+@app.post("/maps/{map_id}/unpublish")
+def unpublish_map(
+    map_id: str,
+    current_user: UserObj = Depends(get_current_user)
+):
+    verify_map_ownership(map_id, current_user.id)
+    supabase.table("maps").update({
+        "is_public": False,
+        "embed_token_hash": None
+    }).eq("id", map_id).execute()
+    return {"message": "Acceso al mapa revocado"}
+
+# ----------------------------------------------------------------
+# IMÁGENES
+# ----------------------------------------------------------------
+
 @app.post("/images/upload")
 async def upload_image(
+    request: Request,
     file: UploadFile = File(...),
     map_id: str = None,
     current_user: UserObj = Depends(get_current_user)
 ):
-    if file.content_type not in ALLOWED_TYPES:
-        raise HTTPException(status_code=400, detail="Formato no permitido. Usa JPEG, PNG o WEBP.")
+    # Rate limit simple por user_id
+    user_id = current_user.id
+    now = datetime.utcnow()
+    hour_key = f"{user_id}:{now.strftime('%Y%m%d%H')}"
+    UPLOAD_RATE_LIMIT[hour_key] = UPLOAD_RATE_LIMIT.get(hour_key, 0) + 1
+    if UPLOAD_RATE_LIMIT[hour_key] > MAX_UPLOADS_PER_HOUR:
+        raise HTTPException(status_code=429, detail="Límite de uploads por hora alcanzado")
+
+    # Verificar ownership del mapa si se provee map_id
+    if map_id:
+        verify_map_ownership(map_id, user_id)
 
     contents = await file.read()
 
+    # Validar tamaño
     if len(contents) > MAX_FILE_SIZE:
         raise HTTPException(status_code=400, detail="Imagen supera el límite de 10 MB.")
 
+    # Validar magic bytes (no confiar en Content-Type del cliente)
+    real_mime = detect_mime_from_magic(contents)
+    if not real_mime:
+        raise HTTPException(status_code=400, detail="Formato no permitido. Usa JPEG, PNG o WEBP.")
+
+    # Validar dimensiones
     try:
         img = Image.open(io.BytesIO(contents))
     except Exception:
         raise HTTPException(status_code=400, detail="Archivo no es una imagen válida.")
-
     width, height = img.size
     if width * height > MAX_PIXELS:
         raise HTTPException(status_code=400, detail=f"Imagen supera 25 MP ({width}x{height}).")
 
+    # Extraer EXIF antes de descartar
     lat, lng, taken_at = None, None, None
     try:
         exif_bytes = piexif.load(contents)
@@ -194,29 +331,35 @@ async def upload_image(
     except Exception:
         pass
 
-    image_uuid = hashlib.md5(contents).hexdigest()
-    user_id = current_user.id
+    # Descartar EXIF del binario antes de subir
+    clean_contents = strip_exif(contents, real_mime)
 
+    # public_id opaco con UUID aleatorio — nunca expone user_id
+    image_uuid = secrets.token_hex(16)
     if map_id:
         public_id = f"geomap/{map_id}/{image_uuid}"
     else:
-        public_id = f"geomap/default/{user_id[:8]}/{image_uuid}"
+        public_id = f"geomap/unassigned/{image_uuid}"
 
+    # Subir a Cloudinary
     try:
         result = cloudinary.uploader.upload(
-            contents,
+            clean_contents,
             public_id=public_id,
             type="private",
             eager=[
-                {"width": 400, "height": 300, "crop": "fill", "quality": "auto", "fetch_format": "auto"},
-                {"width": 1200, "height": 900, "crop": "limit", "quality": "auto", "fetch_format": "auto"}
+                {"width": 400, "height": 300, "crop": "fill",
+                 "quality": "auto", "fetch_format": "auto"},
+                {"width": 1200, "height": 900, "crop": "limit",
+                 "quality": "auto", "fetch_format": "auto"}
             ],
             eager_async=False,
             overwrite=False
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error subiendo a Cloudinary: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error subiendo imagen: {str(e)}")
 
+    # Guardar en BD — nunca devolver cloudinary_public_id al cliente
     image_data = {
         "user_id": user_id,
         "map_id": map_id,
@@ -227,7 +370,6 @@ async def upload_image(
         "taken_at": taken_at,
         "has_gps": lat is not None
     }
-
     try:
         db_result = supabase.table("images").insert(image_data).execute()
         image_id = db_result.data[0]["id"]
@@ -240,6 +382,59 @@ async def upload_image(
         "has_gps": lat is not None,
         "lat": lat,
         "lng": lng,
-        "taken_at": taken_at,
-        "cloudinary_public_id": result["public_id"]
+        "taken_at": taken_at
     }
+
+@app.delete("/images/{image_id}")
+def delete_image(
+    image_id: str,
+    current_user: UserObj = Depends(get_current_user)
+):
+    result = supabase.table("images")\
+        .select("cloudinary_public_id")\
+        .eq("id", image_id)\
+        .eq("user_id", current_user.id)\
+        .execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Imagen no encontrada")
+    public_id = result.data[0]["cloudinary_public_id"]
+    cloudinary.uploader.destroy(public_id, resource_type="image", type="private")
+    supabase.table("images").delete().eq("id", image_id).execute()
+    return {"message": "Imagen eliminada"}
+
+# ----------------------------------------------------------------
+# ENDPOINT PÚBLICO — embed
+# ----------------------------------------------------------------
+
+@app.get("/api/public/markers")
+async def public_markers(token: str, request: Request):
+    # Validar token
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
+    map_result = supabase.table("maps")\
+        .select("id")\
+        .eq("embed_token_hash", token_hash)\
+        .eq("is_public", True)\
+        .execute()
+    if not map_result.data:
+        raise HTTPException(status_code=403, detail="Token inválido o mapa no público")
+
+    map_id = map_result.data[0]["id"]
+
+    # Log de acceso con IP hasheada
+    ip = request.client.host
+    ip_hash = hashlib.sha256(ip.encode()).hexdigest()
+    supabase.table("embed_access_log").insert({
+        "map_id": map_id,
+        "ip_hash": ip_hash,
+        "user_agent_short": request.headers.get("user-agent", "")[:100]
+    }).execute()
+
+    # Devolver solo lat/lng/taken_at — nunca public_id ni user_id
+    images = supabase.table("images")\
+        .select("id, lat, lng, taken_at")\
+        .eq("map_id", map_id)\
+        .eq("has_gps", True)\
+        .limit(200)\
+        .execute()
+
+    return {"markers": images.data}

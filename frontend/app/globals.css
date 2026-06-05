@@ -1,26 +1,91 @@
 @import "tailwindcss";
 
+/* ============================================================
+   GeoMap — design tokens
+   :root = light · .dark = dark
+   ============================================================ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #f5f7f9;
+  --surface: #ffffff;
+  --surface-2: #fafbfc;
+  --surface-3: #f1f3f6;
+  --border: #e6e9ed;
+  --border-2: #d9dde3;
+  --ink: #181b21;
+  --ink-2: #474e58;
+  --ink-muted: #79818c;
+  --ink-faint: #a7aeb8;
+  --primary: #2d62e6;
+  --primary-strong: #2350c2;
+  --primary-50: #ecf1fe;
+  --primary-100: #dae5fd;
+  --on-primary: #ffffff;
+  --success: #138a52;
+  --success-soft: #e5f4ec;
+  --warning: #b5790b;
+  --warning-soft: #faf0d9;
+  --danger: #d23b3b;
+  --danger-soft: #fbecec;
+  --accent: #6e5be6;
+  --map-bg: #e7ebef;
+  --map-park: #dbe9d3;
+  --map-water: #c5dbea;
+  --map-street: #ffffff;
+  --map-label: #8a929c;
+  --ring: rgba(45, 98, 230, 0.3);
+  --shadow-sm: 0 1px 2px rgba(20, 28, 44, 0.06);
+  --shadow-card: 0 1px 2px rgba(20, 28, 44, 0.05), 0 2px 6px rgba(20, 28, 44, 0.04);
+  --shadow-lift: 0 4px 14px rgba(20, 28, 44, 0.1), 0 1px 3px rgba(20, 28, 44, 0.06);
+  --shadow-pop: 0 14px 38px rgba(16, 24, 40, 0.18), 0 0 0 1px rgba(16, 24, 40, 0.04);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+.dark {
+  --bg: #0e1116;
+  --surface: #161a21;
+  --surface-2: #1a1f27;
+  --surface-3: #20262f;
+  --border: #262c36;
+  --border-2: #313945;
+  --ink: #eaedf1;
+  --ink-2: #b4bbc5;
+  --ink-muted: #828b97;
+  --ink-faint: #5e6671;
+  --primary: #5384f2;
+  --primary-strong: #6e98f4;
+  --primary-50: rgba(83, 132, 242, 0.15);
+  --primary-100: rgba(83, 132, 242, 0.24);
+  --on-primary: #ffffff;
+  --success: #34b978;
+  --success-soft: rgba(52, 185, 120, 0.15);
+  --warning: #d9a33c;
+  --warning-soft: rgba(217, 163, 60, 0.15);
+  --danger: #e5635f;
+  --danger-soft: rgba(229, 99, 95, 0.15);
+  --accent: #9486f0;
+  --map-bg: #11151b;
+  --map-park: #18271d;
+  --map-water: #152a38;
+  --map-street: #232b35;
+  --map-label: #6b7480;
+  --ring: rgba(83, 132, 242, 0.4);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35), 0 2px 6px rgba(0, 0, 0, 0.25);
+  --shadow-lift: 0 6px 18px rgba(0, 0, 0, 0.45);
+  --shadow-pop: 0 16px 40px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-feature-settings: "cv01", "ss01";
+}
+
+* {
+  border-color: var(--border);
 }

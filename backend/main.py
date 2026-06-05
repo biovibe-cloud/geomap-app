@@ -448,9 +448,126 @@ def delete_image(
     supabase.table("images").delete().eq("id", image_id).execute()
     return {"message": "Imagen eliminada"}
 
+# 
 # ----------------------------------------------------------------
+# ENDPOINTS PRIVADOS — vista del mapa autenticado
+# ----------------------------------------------------------------
+
+@app.get("/maps/{map_id}")
+def get_map(
+    map_id: str,
+    current_user: UserObj = Depends(get_current_user)
+):
+    verify_map_ownership(map_id, current_user.id)
+    result = supabase.table("maps")\
+        .select("id, name, description, is_public, created_at, updated_at")\
+        .eq("id", map_id)\
+        .eq("user_id", current_user.id)\
+        .single()\
+        .execute()
+    return result.data
+
+@app.get("/maps/{map_id}/markers")
+def get_map_markers(
+    map_id: str,
+    current_user: UserObj = Depends(get_current_user)
+):
+    verify_map_ownership(map_id, current_user.id)
+    images = supabase.table("images")\
+        .select("id, lat, lng, taken_at, filename_original, has_gps, cloudinary_public_id")\
+        .eq("map_id", map_id)\
+        .eq("user_id", current_user.id)\
+        .eq("has_gps", True)\
+        .limit(200)\
+        .execute()
+    markers = []
+    for img in images.data:
+        thumb_url = get_signed_url(
+            img["cloudinary_public_id"],
+            "w_400,h_300,c_fill,q_auto,f_auto"
+        )
+        full_url = get_signed_url(
+            img["cloudinary_public_id"],
+            "w_1200,h_900,c_limit,q_auto,f_auto"
+        )
+        markers.append({
+            "image_id": img["id"],
+            "lat": img["lat"],
+            "lng": img["lng"],
+            "taken_at": img["taken_at"],
+            "filename": img["filename_original"],
+            "thumb_url": thumb_url,
+            "full_url": full_url
+        })
+    return {"markers": markers}
+
+@app.get("/maps/{map_id}/images/unlocated")
+def get_unlocated_images(
+    map_id: str,
+    current_user: UserObj = Depends(get_current_user)
+):
+    verify_map_ownership(map_id, current_user.id)
+    images = supabase.table("images")\
+        .select("id, filename_original, taken_at, cloudinary_public_id")\
+        .eq("map_id", map_id)\
+        .eq("user_id", current_user.id)\
+        .eq("has_gps", False)\
+        .execute()
+    result = []
+    for img in images.data:
+        thumb_url = get_signed_url(
+            img["cloudinary_public_id"],
+            "w_400,h_300,c_fill,q_auto,f_auto"
+        )
+        result.append({
+            "image_id": img["id"],
+            "filename": img["filename_original"],
+            "taken_at": img["taken_at"],
+            "thumb_url": thumb_url
+        })
+    return {"images": result}
+
+@app.patch("/images/{image_id}/location")
+def update_image_location(
+    image_id: str,
+    lat: float,
+    lng: float,
+    current_user: UserObj = Depends(get_current_user)
+):
+    result = supabase.table("images")\
+        .select("id")\
+        .eq("id", image_id)\
+        .eq("user_id", current_user.id)\
+        .execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Imagen no encontrada")
+    supabase.table("images").update({
+        "lat": round(lat, 7),
+        "lng": round(lng, 7),
+        "has_gps": True
+    }).eq("id", image_id).execute()
+    return {"message": "Ubicación actualizada", "lat": lat, "lng": lng}
+
+@app.get("/maps/{map_id}/embed/access-log")
+def get_access_log(
+    map_id: str,
+    current_user: UserObj = Depends(get_current_user)
+):
+    verify_map_ownership(map_id, current_user.id)
+    logs = supabase.table("embed_access_log")\
+        .select("accessed_at, user_agent_short")\
+        .eq("map_id", map_id)\
+        .order("accessed_at", desc=True)\
+        .limit(50)\
+        .execute()
+    return {"logs": logs.data}
+
+
+
+
+#------------------------------------------------
 # ENDPOINT PÚBLICO — embed
-# ----------------------------------------------------------------
+# -----------------------------------------------
 
 @app.get("/api/public/markers")
 async def public_markers(token: str, request: Request):
@@ -497,11 +614,16 @@ async def public_markers(token: str, request: Request):
             img["cloudinary_public_id"],
             "w_400,h_300,c_fill,q_auto,f_auto"
         )
+        full_url = get_signed_url(
+            img["cloudinary_public_id"],
+            "w_1200,h_900,c_limit,q_auto,f_auto"
+        )
         markers.append({
             "lat": img["lat"],
             "lng": img["lng"],
             "taken_at": img["taken_at"],
-            "thumb_url": thumb_url
+            "thumb_url": thumb_url,
+            "full_url": full_url
         })
 
     return {"markers": markers}

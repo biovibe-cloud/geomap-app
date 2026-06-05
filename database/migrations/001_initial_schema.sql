@@ -71,9 +71,7 @@ create policy "dueño ve sus mapas"
   on public.maps for select
   using (auth.uid() = user_id);
 
-create policy "mapas públicos son visibles a todos"
-  on public.maps for select
-  using (is_public = true);
+
 
 create policy "dueño crea mapas"
   on public.maps for insert
@@ -114,15 +112,7 @@ create policy "dueño ve sus imágenes"
   on public.images for select
   using (auth.uid() = user_id);
 
-create policy "imágenes de mapas públicos son visibles"
-  on public.images for select
-  using (
-    exists (
-      select 1 from public.maps
-      where maps.id = images.map_id
-        and maps.is_public = true
-    )
-  );
+
 
 create policy "dueño inserta imágenes"
   on public.images for insert

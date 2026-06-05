@@ -54,8 +54,21 @@ MAX_FILE_SIZE = 10 * 1024 * 1024
 MAX_PIXELS = 25_000_000
 UPLOAD_RATE_LIMIT: dict = {}
 MAX_UPLOADS_PER_HOUR = 50
+PUBLIC_RATE_LIMIT: dict = {}
+MAX_PUBLIC_PER_MIN = 60
 
 _public_key_cache = None
+
+def get_signed_url(public_id: str, transformation: str) -> str:
+    import cloudinary.utils
+    url, _ = cloudinary.utils.cloudinary_url(
+        public_id,
+        type="private",
+        resource_type="image",
+        raw_transformation=transformation,
+        sign_url=True
+    )
+    return url
 
 @app.on_event("startup")
 async def startup_event():
@@ -161,16 +174,28 @@ def extract_taken_at(exif_data: dict):
     return None
 
 def strip_exif(contents: bytes, mime_type: str) -> bytes:
+    if mime_type == "image/jpeg":
+        try:
+            img = Image.open(io.BytesIO(contents))
+            buf = io.BytesIO()
+            img.save(buf, format="JPEG", exif=b"")
+            return buf.getvalue()
+        except Exception as e:
+            raise HTTPException(
+                status_code=422,
+                detail=f"No se pudo eliminar EXIF de la imagen: {str(e)}"
+            )
     try:
-        if mime_type == "image/jpeg":
-            return piexif.remove(contents)
         img = Image.open(io.BytesIO(contents))
         buf = io.BytesIO()
         fmt = "PNG" if mime_type == "image/png" else "WEBP"
         img.save(buf, format=fmt)
         return buf.getvalue()
-    except Exception:
-        return contents
+    except Exception as e:
+        raise HTTPException(
+            status_code=422,
+            detail=f"No se pudo procesar la imagen: {str(e)}"
+        )
 
 # ----------------------------------------------------------------
 # ENDPOINTS
@@ -247,8 +272,21 @@ def delete_map(
     current_user: UserObj = Depends(get_current_user)
 ):
     verify_map_ownership(map_id, current_user.id)
+    images = supabase.table("images")\
+        .select("cloudinary_public_id")\
+        .eq("map_id", map_id)\
+        .execute()
+    for img in images.data:
+        try:
+            cloudinary.uploader.destroy(
+                img["cloudinary_public_id"],
+                resource_type="image",
+                type="private"
+            )
+        except Exception:
+            pass
     supabase.table("maps").delete().eq("id", map_id).execute()
-    return {"message": "Mapa eliminado"}
+    return {"message": "Mapa y sus imágenes eliminados"}
 
 @app.post("/maps/{map_id}/publish")
 def publish_map(
@@ -374,6 +412,14 @@ async def upload_image(
         db_result = supabase.table("images").insert(image_data).execute()
         image_id = db_result.data[0]["id"]
     except Exception as e:
+        try:
+            cloudinary.uploader.destroy(
+                result["public_id"],
+                resource_type="image",
+                type="private"
+            )
+        except Exception:
+            pass
         raise HTTPException(status_code=500, detail=f"Error guardando en BD: {str(e)}")
 
     return {
@@ -408,6 +454,14 @@ def delete_image(
 
 @app.get("/api/public/markers")
 async def public_markers(token: str, request: Request):
+# Rate limit por IP — 60 requests/min
+    ip = request.client.host
+    now = datetime.utcnow()
+    min_key = f"{ip}:{now.strftime('%Y%m%d%H%M')}"
+    PUBLIC_RATE_LIMIT[min_key] = PUBLIC_RATE_LIMIT.get(min_key, 0) + 1
+    if PUBLIC_RATE_LIMIT[min_key] > MAX_PUBLIC_PER_MIN:
+        raise HTTPException(status_code=429, detail="Rate limit excedido")
+
     # Validar token
     token_hash = hashlib.sha256(token.encode()).hexdigest()
     map_result = supabase.table("maps")\
@@ -429,12 +483,25 @@ async def public_markers(token: str, request: Request):
         "user_agent_short": request.headers.get("user-agent", "")[:100]
     }).execute()
 
-    # Devolver solo lat/lng/taken_at — nunca public_id ni user_id
+    # Devolver lat/lng/taken_at/thumb_url — nunca public_id, id ni user_id
     images = supabase.table("images")\
-        .select("id, lat, lng, taken_at")\
+        .select("cloudinary_public_id, lat, lng, taken_at")\
         .eq("map_id", map_id)\
         .eq("has_gps", True)\
         .limit(200)\
         .execute()
 
-    return {"markers": images.data}
+    markers = []
+    for img in images.data:
+        thumb_url = get_signed_url(
+            img["cloudinary_public_id"],
+            "w_400,h_300,c_fill,q_auto,f_auto"
+        )
+        markers.append({
+            "lat": img["lat"],
+            "lng": img["lng"],
+            "taken_at": img["taken_at"],
+            "thumb_url": thumb_url
+        })
+
+    return {"markers": markers}

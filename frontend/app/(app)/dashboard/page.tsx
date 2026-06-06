@@ -1,18 +1,22 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 import { MapsDashboard, type MapsView } from "@/components/maps/MapsDashboard";
 import { useMaps } from "@/hooks/useMaps";
-// import { useAuth } from "@/hooks/useAuth"; // wire the in-memory JWT here
 
-/**
- * Dashboard route. Connects the useMaps() hook to the presentational
- * <MapsDashboard />. The component itself never touches the API.
- */
 export default function MapsPage() {
-  // const { token } = useAuth();
-  const { maps, stats, status, error, refetch } = useMaps(/* token */);
-  const [view, setView] = useState<MapsView>("list"); // lista por defecto
+  const { token, logout } = useAuth();
+  const router = useRouter();
+  const { maps, stats, status, error, refetch } = useMaps(token ?? undefined);
+  const [view, setView] = useState<MapsView>("list");
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  function handleLogout() {
+    logout();
+    router.push("/login");
+  }
 
   return (
     <MapsDashboard
@@ -23,19 +27,11 @@ export default function MapsPage() {
       view={view}
       onViewChange={setView}
       onRetry={refetch}
-      onCreateMap={() => {
-        /* open create-map modal */
-      }}
+      onCreateMap={() => {}}
       actions={{
-        onOpen: (m) => {
-          window.location.href = `/maps/${m.id}`;
-        },
-        onManageEmbed: (m) => {
-          window.location.href = `/maps/${m.id}/embed`;
-        },
-        onDelete: () => {
-          /* open delete confirm */
-        },
+        onOpen: (m) => { router.push(`/maps/${m.id}`); },
+        onManageEmbed: (m) => { router.push(`/maps/${m.id}/embed`); },
+        onDelete: () => {},
       }}
     />
   );

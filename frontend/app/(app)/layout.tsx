@@ -1,16 +1,28 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 import { AppShell } from "@/components/layout/AppShell";
 
-/**
- * Layout for the authenticated app routes. Everything under app/(app)/
- * renders inside the AppShell (rail + top bar + content area).
- *
- * Auth-gating (redirect to /login when the in-memory JWT is missing/expired)
- * hooks in here once AuthContext lands.
- */
 export default function AppGroupLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { token, sessionExpired } = useAuth();
+  const router = useRouter();
+  const [checked, setChecked] = useState(false);
+
+  useEffect(() => {
+    setChecked(true);
+    if (!token || sessionExpired) {
+      router.push("/login");
+    }
+  }, [token, sessionExpired, router]);
+
+  if (!checked) return null;
+  if (!token) return null;
+
   return <AppShell>{children}</AppShell>;
 }

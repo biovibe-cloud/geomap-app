@@ -178,3 +178,44 @@ export const MapPlus = (p: IconProps) => (
     <path d="M18 14v6M15 17h6" />
   </svg>
 );
+
+export const Mail = (p: IconProps) => (
+  <svg {...base(p)}>
+    <rect x="3" y="5" width="18" height="14" rx="2.5" />
+    <path d="m3 7 9 6 9-6" />
+  </svg>
+);
+
+export const EyeOff = (p: IconProps) => (
+  <svg {...base(p)}>
+    <path d="M17.9 17.9A10 10 0 0 1 12 19C5.5 19 2 12 2 12a17.7 17.7 0 0 1 5.1-6.1M9.9 5.2A9.8 9.8 0 0 1 12 5c6.5 0 10 7 10 7a17.8 17.8 0 0 1-2.4 3.6" />
+    <path d="M14.1 14.1a3 3 0 0 1-4.2-4.2" />
+    <path d="m2 2 20 20" />
+  </svg>
+);
+
+export const Info = (p: IconProps) => (
+  <svg {...base(p)}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 8v1M12 12v4" />
+  </svg>
+);
+
+export const Spinner = ({ size = 18, ...p }: IconProps) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.7}
+    strokeLinecap="round"
+    aria-hidden
+    className="animate-spin"
+    {...p}
+  >
+    <path d="M12 3a9 9 0 1 0 9 9" />
+  </svg>
+);
+
+

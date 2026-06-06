@@ -1,4 +1,5 @@
 export type MapStatus = "ready" | "processing" | "no_gps";
+export type Visibility = "public" | "private";
 
 export interface MapSummary {
   id: string;
@@ -11,6 +12,8 @@ export interface MapSummary {
   locatedCount?: number;
   status?: MapStatus;
   previewSeed?: number;
+  visibility?: Visibility;
+  createdAt?: string;
 }
 
 export interface PhotoStats {

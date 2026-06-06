@@ -14,18 +14,18 @@ function Row({ map, actions }: { map: MapSummary; actions?: MapActions }) {
           </div>
           <div className="min-w-0">
             <div className="text-base font-semibold text-ink">{map.name}</div>
-            <div className="mt-0.5 text-xs text-ink-muted">{formatDate(map.createdAt)}</div>
+            <div className="mt-0.5 text-xs text-ink-muted">{formatDate(map.created_at)}</div>
           </div>
         </div>
       </td>
       <td className="px-[18px] py-[13px] align-middle">
-        <span className="font-medium tabular-nums text-ink">{formatNumber(map.photoCount)}</span>
+        <span className="font-medium tabular-nums text-ink">{formatNumber(map.photoCount ?? 0)}</span>
       </td>
       <td className="px-[18px] py-[13px] align-middle">
-        <StatusBadge status={map.status} />
+        <StatusBadge status={map.status ?? "ready"} />
       </td>
       <td className="px-[18px] py-[13px] align-middle">
-        <VisibilityLabel visibility={map.visibility} />
+        <VisibilityLabel visibility={map.visibility ?? (map.is_public ? "public" : "private")} />
       </td>
       <td className="px-[18px] py-[13px] align-middle">
         <div className="flex items-center justify-end gap-1.5">

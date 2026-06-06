@@ -29,25 +29,33 @@ export function useMaps(token?: string): UseMapsResult {
   const [error, setError] = useState<string | null>(null);
   const [sessionExpired, setSessionExpired] = useState(false);
 
-  const load = useCallback(async () => {
-    setStatus("loading");
-    setError(null);
-    setSessionExpired(false);
-    try {
-      const data = await api.getMaps(token);
-      setMaps(data);
-      setStats(computeStats(data));
-      setStatus("ready");
-    } catch (e) {
-      if (e instanceof ApiError && e.status === 401) setSessionExpired(true);
-      setError(e instanceof Error ? e.message : "Error al cargar los mapas.");
-      setStatus("error");
-    }
-  }, [token]);
+  const [reloadKey, setReloadKey] = useState(0);
+  const refetch = useCallback(() => setReloadKey(k => k + 1), []);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    let cancelled = false;
+    async function run() {
+      setStatus("loading");
+      setError(null);
+      setSessionExpired(false);
+      try {
+        const data = await api.getMaps(token);
+        if (!cancelled) {
+          setMaps(data);
+          setStats(computeStats(data));
+          setStatus("ready");
+        }
+      } catch (e) {
+        if (!cancelled) {
+          if (e instanceof ApiError && e.status === 401) setSessionExpired(true);
+          setError(e instanceof Error ? e.message : "Error al cargar los mapas.");
+          setStatus("error");
+        }
+      }
+    }
+    run();
+    return () => { cancelled = true; };
+  }, [token, reloadKey]);
 
-  return { maps, stats, status, error, sessionExpired, refetch: load };
+  return { maps, stats, status, error, sessionExpired, refetch };
 }

@@ -33,7 +33,7 @@ export default function MapsPage() {
         onManageEmbed: (m) => {
           window.location.href = `/maps/${m.id}/embed`;
         },
-        onDelete: (m) => {
+        onDelete: () => {
           /* open delete confirm */
         },
       }}

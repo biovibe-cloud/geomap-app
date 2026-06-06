@@ -4,7 +4,7 @@ import type { SVGProps } from "react";
  * GeoMap icon set — minimal 1.7px line icons on a 24px grid.
  * All inherit `currentColor`. Size via the `size` prop (default 18).
  */
-type IconProps = SVGProps<SVGSVGElement> & { size?: number };
+type IconProps = Omit<SVGProps<SVGSVGElement>, "strokeWidth"> & { size?: number; strokeWidth?: number };
 
 function base({ size = 18, strokeWidth = 1.7, ...rest }: IconProps & { strokeWidth?: number }) {
   return {

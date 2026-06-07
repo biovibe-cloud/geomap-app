@@ -14,7 +14,7 @@ function Row({ map, actions }: { map: MapSummary; actions?: MapActions }) {
           </div>
           <div className="min-w-0">
             <div className="text-base font-semibold text-ink">{map.name}</div>
-            <div className="mt-0.5 text-xs text-ink-muted">{formatDate(map.created_at)}</div>
+            <div className="mt-0.5 text-xs text-ink-muted">{formatDate(map.createdAt)}</div>
           </div>
         </div>
       </td>
@@ -25,7 +25,7 @@ function Row({ map, actions }: { map: MapSummary; actions?: MapActions }) {
         <StatusBadge status={map.status ?? "ready"} />
       </td>
       <td className="px-[18px] py-[13px] align-middle">
-        <VisibilityLabel visibility={map.visibility ?? (map.is_public ? "public" : "private")} />
+        <VisibilityLabel visibility={map.visibility ?? (map.visibility === "public" ? "public" : "private")} />
       </td>
       <td className="px-[18px] py-[13px] align-middle">
         <div className="flex items-center justify-end gap-1.5">

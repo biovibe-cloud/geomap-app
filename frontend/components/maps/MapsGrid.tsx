@@ -11,7 +11,7 @@ export function MapCard({ map, actions }: { map: MapSummary; actions?: MapAction
       <div className="relative h-[124px] border-b border-border">
         <MiniMap seed={map.previewSeed ?? 0} noGps={map.status === "no_gps"} />
         <div className="absolute left-2.5 top-2.5 z-[2]">
-          <VisibilityChip visibility={map.visibility ?? (map.is_public ? "public" : "private")} />
+          <VisibilityChip visibility={map.visibility ?? (map.visibility === "public" ? "public" : "private")} />
         </div>
         <button
           type="button"
@@ -27,7 +27,7 @@ export function MapCard({ map, actions }: { map: MapSummary; actions?: MapAction
         <div className="mt-1.5 flex items-center gap-2 text-[12.5px] text-ink-muted">
           <span>{formatNumber(map.photoCount ?? 0)} fotos</span>
           <span className="h-[3px] w-[3px] rounded-full bg-ink-faint" />
-          <span>{formatDate(map.created_at)}</span>
+          <span>{formatDate(map.createdAt)}</span>
         </div>
 
         <div className="mt-3 flex items-center justify-between">

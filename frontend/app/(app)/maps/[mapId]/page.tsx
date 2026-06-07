@@ -10,11 +10,8 @@ import { useAuth } from "@/hooks/useAuth";
 export default function MapPage() {
   const { mapId } = useParams<{ mapId: string }>();
   const { token } = useAuth();
-  const { markers, unlocated, status, locate, refetch } = useMapData(mapId);
+  const { markers, unlocated, status, locate, refetch, mapName } = useMapData(mapId);
   const [uploaderOpen, setUploaderOpen] = useState(false);
-
-  // mapName se obtiene del primer marcador o queda vacío hasta cargar
-  const mapName = markers[0]?.filename ? "" : "";
 
   return (
     <div className="-mx-[30px] -mb-[30px] -mt-[26px] h-[calc(100%+56px)]">

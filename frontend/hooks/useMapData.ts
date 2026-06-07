@@ -10,7 +10,7 @@ export interface UseMapDataResult {
   unlocated: UnlocatedImage[];
   status: LoadState;
   error: string | null;
-  /** Move a photo from `unlocated` into `markers` (optimistic). */
+  mapName: string;
   locate: (imageId: string, lat: number, lng: number) => Promise<void>;
   refetch: () => void;
 }
@@ -29,6 +29,7 @@ export function useMapData(mapId: string): UseMapDataResult {
   const [unlocated, setUnlocated] = useState<UnlocatedImage[]>([]);
   const [status, setStatus] = useState<LoadState>("loading");
   const [error, setError] = useState<string | null>(null);
+  const [mapName, setMapName] = useState<string>("");
 
   const [reloadKey, setReloadKey] = useState(0);
   const refetch = useCallback(() => setReloadKey((k) => k + 1), []);
@@ -47,6 +48,10 @@ export function useMapData(mapId: string): UseMapDataResult {
           setMarkers(m);
           setUnlocated(u);
           setStatus("ready");
+          // obtener nombre del mapa
+          const maps = await api.getMaps(token ?? undefined);
+          const found = maps.find((map) => map.id === mapId);
+          if (!cancelled && found) setMapName(found.name);
         }
       } catch (e) {
         if (!cancelled) {
@@ -86,5 +91,5 @@ export function useMapData(mapId: string): UseMapDataResult {
     [unlocated, token, expireSession],
   );
 
-  return { markers, unlocated, status, error, locate, refetch };
+  return { markers, unlocated, status, error, mapName, locate, refetch };
 }

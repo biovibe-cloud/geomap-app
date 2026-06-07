@@ -259,12 +259,27 @@ def create_map(
 
 @app.get("/maps")
 def list_maps(current_user: UserObj = Depends(get_current_user)):
-    result = supabase.table("maps")\
+    maps = supabase.table("maps")\
         .select("id, name, description, is_public, created_at, updated_at")\
         .eq("user_id", current_user.id)\
         .order("created_at", desc=True)\
         .execute()
-    return result.data
+
+    result = []
+    for m in maps.data:
+        counts = supabase.table("images")\
+            .select("id, has_gps")\
+            .eq("map_id", m["id"])\
+            .execute()
+        photo_count = len(counts.data)
+        located_count = sum(1 for img in counts.data if img["has_gps"])
+        result.append({
+            **m,
+            "photo_count": photo_count,
+            "located_count": located_count
+        })
+
+    return result
 
 @app.delete("/maps/{map_id}")
 def delete_map(

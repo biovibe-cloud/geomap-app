@@ -34,9 +34,17 @@ cloudinary.config(
 
 app = FastAPI(title="GeoMap API", version="1.0.0")
 
+import json
+
+_raw_origins = os.getenv("ALLOWED_ORIGINS", '["http://localhost:3000"]')
+try:
+    ALLOWED_ORIGINS = json.loads(_raw_origins)
+except Exception:
+    ALLOWED_ORIGINS = ["http://localhost:3000"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

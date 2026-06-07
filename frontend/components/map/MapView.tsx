@@ -30,6 +30,7 @@ export function MapView({
   markers,
   unlocated,
   onUploadClick,
+  onLocate,
   onRetry,
 }: MapViewProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -40,6 +41,12 @@ export function MapView({
   useLeafletMap(markers, {
     enabled: status === "ready",
     onMarkerClick: (m) => setActive(m),
+    onMapClick: locating
+      ? (lat, lng) => {
+          onLocate(locating.image_id, lat, lng);
+          setLocating(null);
+        }
+      : undefined,
   });
 
   const showNoGps = status === "ready" && markers.length === 0;

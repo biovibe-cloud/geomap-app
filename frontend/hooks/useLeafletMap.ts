@@ -22,13 +22,15 @@ export function useLeafletMap(
   options: {
     enabled: boolean;
     onMarkerClick?: (marker: Marker) => void;
+    onMapClick?: (lat: number, lng: number) => void;
   },
 ) {
-  const { enabled, onMarkerClick } = options;
-  // keep latest click handler without re-running the whole init effect
+  const { enabled, onMarkerClick, onMapClick } = options;
   const clickRef = useRef(onMarkerClick);
+  const onMapClickRef = useRef(onMapClick);
   useEffect(() => {
     clickRef.current = onMarkerClick;
+    onMapClickRef.current = onMapClick;
   });
   // Leaflet's map instance + the cluster layer, kept across renders.
   const mapRef = useRef<unknown>(null);
@@ -54,6 +56,9 @@ export function useLeafletMap(
       L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
         maxZoom: 19,
       }).addTo(map);
+map.on("click", (e) => {
+        onMapClickRef.current?.(e.latlng.lat, e.latlng.lng);
+      });
 
       // markercluster augments L at runtime
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

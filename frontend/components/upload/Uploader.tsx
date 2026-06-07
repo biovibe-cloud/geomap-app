@@ -12,6 +12,7 @@ import {
   validateFiles,
   type UploadItem,
 } from "./uploadModel";
+import { useAuth } from "@/hooks/useAuth";
 
 export interface UploaderProps {
   isOpen: boolean;
@@ -28,13 +29,14 @@ export interface UploaderProps {
  * The real upload work is delegated to `onUpload`; this component owns only the
  * UI lifecycle. (Wire onUpload to POST /images/upload — see the map page.)
  */
-export function Uploader({ isOpen, onClose, onUpload,  }: UploaderProps) {
+export function Uploader({ isOpen, onClose, onUpload: _, mapId }: UploaderProps) {
   const [items, setItems] = useState<UploadItem[]>([]);
   const [rejected, setRejected] = useState<Array<{ name: string; reason: string }>>([]);
   const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-
+const { token } = useAuth();
+  const refetchRef = useRef<(() => void) | null>(null);
   // reset when closed
   useEffect(() => {
     if (isOpen) return;
@@ -82,11 +84,62 @@ export function Uploader({ isOpen, onClose, onUpload,  }: UploaderProps) {
     setBusy(true);
     const pending = items.filter((i) => i.phase === "pending");
 
-    await onUpload(pending.map((i) => i.file)).catch(() => {
-      /* per-item errors are reflected below */
-    });
+    for (const item of pending) {
+      setItems((list) =>
+        list.map((i) => i.uid === item.uid ? { ...i, phase: "uploading" as const, progress: 0 } : i)
+      );
+
+      try {
+        const form = new FormData();
+        form.append("file", item.file);
+        if (mapId) form.append("map_id", mapId);
+
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/images/upload`, {
+          method: "POST",
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          body: form,
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          setItems((list) =>
+            list.map((i) =>
+              i.uid === item.uid
+                ? { ...i, phase: "error" as const, message: err.detail ?? "Error al subir" }
+                : i
+            )
+          );
+          continue;
+        }
+
+        const data = await res.json();
+        setItems((list) =>
+          list.map((i) =>
+            i.uid === item.uid
+              ? {
+                  ...i,
+                  phase: data.has_gps ? ("gps" as const) : ("no_gps" as const),
+                  imageId: data.image_id,
+                  lat: data.lat ?? undefined,
+                  lng: data.lng ?? undefined,
+                  progress: 100,
+                }
+              : i
+          )
+        );
+      } catch {
+        setItems((list) =>
+          list.map((i) =>
+            i.uid === item.uid
+              ? { ...i, phase: "error" as const, message: "No se pudo conectar" }
+              : i
+          )
+        );
+      }
+    }
 
     setBusy(false);
+    refetchRef.current?.();
   };
 
   if (!isOpen) return null;

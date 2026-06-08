@@ -1,3 +1,4 @@
+"use client";
 import { MiniMap } from "./MiniMap";
 import { StatusBadge, VisibilityChip } from "./Badges";
 import { MapActions, formatDate, formatNumber } from "./actions";

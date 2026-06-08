@@ -1,3 +1,4 @@
+"use client";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { Photo, Pin, PinSolid, Globe } from "@/components/ui/Icons";

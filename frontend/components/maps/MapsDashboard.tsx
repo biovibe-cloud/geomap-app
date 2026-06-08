@@ -102,16 +102,7 @@ export function MapsDashboard({
         </div>
 
         {hasData && (
-          <div className="flex items-center gap-2.5">
-            <ViewToggle view={view} onChange={onViewChange} />
-            <ToolbarButton>
-              <Filter size={15} /> Filtrar
-            </ToolbarButton>
-            <ToolbarButton>
-              <Sort size={15} /> Más recientes <ChevronDown size={14} />
-            </ToolbarButton>
-          </div>
-        )}
+          
       </header>
 
       {status === "loading" && <MapsSkeleton />}

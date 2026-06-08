@@ -33,7 +33,7 @@ useEffect(() => {
       view={view}
       onViewChange={setView}
       onRetry={refetch}
-      onCreateMap={() => {}}
+      onCreateMap={() => alert("click funciona")}
       actions={{
         onOpen: (m) => { router.push(`/maps/${m.id}`); },
         onManageEmbed: (m) => { router.push(`/maps/${m.id}/embed`); },

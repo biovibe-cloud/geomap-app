@@ -8,13 +8,9 @@ import { PinSolid, MapIcon, Photo, Settings, Help } from "@/components/ui/Icons"
 type NavItem = { href: string; label: string; icon: typeof MapIcon };
 
 const PRIMARY: NavItem[] = [
-  { href: "/", label: "Mapas", icon: MapIcon },
-  { href: "/photos", label: "Fotos", icon: Photo },
+  { href: "/dashboard", label: "Mapas", icon: MapIcon },
 ];
-const SECONDARY: NavItem[] = [
-  { href: "/settings", label: "Ajustes", icon: Settings },
-  { href: "/help", label: "Ayuda", icon: Help },
-];
+const SECONDARY: NavItem[] = [];
 
 function RailButton({ item, active }: { item: NavItem; active: boolean }) {
   const Icon = item.icon;

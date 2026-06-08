@@ -43,7 +43,8 @@ export function useLeafletMap(
 
     (async () => {
       const L = await import("leaflet");
-      await import("leaflet.markercluster");
+      const MC = await import("leaflet.markercluster");
+      void MC;
       if (disposed) return;
 
       const el = document.getElementById("map-container");
@@ -62,7 +63,8 @@ map.on("click", (e) => {
 
       // markercluster augments L at runtime
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const cluster = (L as any).markerClusterGroup({
+      // @ts-expect-error markercluster augments L at runtime
+      const cluster = L.markerClusterGroup({
         showCoverageOnHover: false,
         maxClusterRadius: 48,
       });

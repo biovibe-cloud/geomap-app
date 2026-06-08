@@ -8,7 +8,7 @@ import { EmptyState } from "./states/EmptyState";
 import { ErrorState } from "./states/ErrorState";
 import { MapsSkeleton } from "./states/MapsSkeleton";
 import { MapActions, formatNumber } from "./actions";
-import { Grid, List, Filter, Sort, ChevronDown } from "@/components/ui/Icons";
+import { Grid, List, Filter, Sort, ChevronDown, Plus } from "@/components/ui/Icons";
 import type { LoadState, MapSummary, PhotoStats } from "@/lib/types";
 
 export type MapsView = "list" | "grid";
@@ -101,8 +101,26 @@ export function MapsDashboard({
           <p className="mt-1.5 text-base text-ink-muted">{subtitle}</p>
         </div>
 
-        {hasData && (
-          
+        <div className="flex items-center gap-2.5">
+          {hasData && (
+            <>
+              <ViewToggle view={view} onChange={onViewChange} />
+              <ToolbarButton>
+                <Filter size={15} /> Filtrar
+              </ToolbarButton>
+              <ToolbarButton>
+                <Sort size={15} /> Más recientes <ChevronDown size={14} />
+              </ToolbarButton>
+            </>
+          )}
+          <button
+            type="button"
+            onClick={onCreateMap}
+            className="inline-flex h-[38px] items-center gap-2 rounded-control bg-primary px-[15px] text-base font-medium text-primary-fg shadow-[0_1px_2px_rgba(45,98,230,.35)] transition-colors hover:bg-primary-strong"
+          >
+            <Plus size={17} /> Nuevo mapa
+          </button>
+        </div>
       </header>
 
       {status === "loading" && <MapsSkeleton />}

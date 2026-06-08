@@ -39,7 +39,7 @@ export function Header({ userName = "Rubén Arcila", onUpload, onNewMap }: Heade
           <Upload size={17} />
           Subir fotos
         </Button>
-        <Button variant="primary" onClick={onNewMap}>
+        <Button variant="primary" onClick={() => { alert("header click"); onNewMap?.(); }}>
           <Plus size={17} />
           Nuevo mapa
         </Button>

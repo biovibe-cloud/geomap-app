@@ -26,21 +26,12 @@ export default function MapPage() {
       />
       <Uploader
         isOpen={uploaderOpen}
-        onClose={() => setUploaderOpen(false)}
-        mapId={mapId}
-        onUpload={async (files) => {
-          for (const file of files) {
-            const form = new FormData();
-            form.append("file", file);
-            form.append("map_id", mapId);
-            await fetch(`${process.env.NEXT_PUBLIC_API_URL}/images/upload`, {
-              method: "POST",
-              headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-              body: form,
-            });
-          }
+        onClose={() => {
+          setUploaderOpen(false);
           refetch();
         }}
+        mapId={mapId}
+        onUpload={async () => {}}
       />
     </div>
   );

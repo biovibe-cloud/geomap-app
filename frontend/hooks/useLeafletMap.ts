@@ -3,20 +3,6 @@
 import { useEffect, useRef } from "react";
 import type { Marker } from "@/lib/types";
 
-/**
- * Initializes a Leaflet map inside #map-container and renders markers with
- * clustering. Leaflet (and the markercluster plugin) are imported dynamically
- * inside the effect so they never run on the server — the component that uses
- * this hook must NOT import "leaflet" itself.
- *
- * Hover a marker -> opens its popup (thumbnail + date).
- * Click a marker -> calls onMarkerClick(marker) so the page can open a lightbox.
- *
- * Requires Leaflet's CSS + markercluster CSS to be loaded globally, e.g. in
- * app/layout.tsx:
- *   import "leaflet/dist/leaflet.css";
- *   import "leaflet.markercluster/dist/MarkerCluster.css";
- */
 export function useLeafletMap(
   markers: Marker[],
   options: {
@@ -32,53 +18,36 @@ export function useLeafletMap(
     clickRef.current = onMarkerClick;
     onMapClickRef.current = onMapClick;
   });
-  // Leaflet's map instance + the cluster layer, kept across renders.
-  const mapRef = useRef<unknown>(null);
-  const clusterRef = useRef<unknown>(null);
 
-  // 1) create the map once the container exists
+  const mapRef = useRef<unknown>(null);
+  const markersRef = useRef<unknown[]>([]);
+
   useEffect(() => {
     if (!enabled) return;
     let disposed = false;
 
     (async () => {
       const L = await import("leaflet");
-      const MC = await import("leaflet.markercluster");
-      void MC;
       if (disposed) return;
 
       const el = document.getElementById("map-container");
       if (!el || mapRef.current) return;
 
-      const map = L.map(el, { zoomControl: true, attributionControl: false }).setView(
-        [20, 0],
-        2,
-      );
+      const map = L.map(el, { zoomControl: true, attributionControl: false }).setView([20, 0], 2);
       L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
         maxZoom: 19,
       }).addTo(map);
-map.on("click", (e) => {
+
+      map.on("click", (e) => {
         onMapClickRef.current?.(e.latlng.lat, e.latlng.lng);
       });
 
-      // markercluster augments L at runtime
-      
-      const cluster = L.markerClusterGroup({
-        showCoverageOnHover: false,
-        maxClusterRadius: 48,
-      });
-      map.addLayer(cluster);
-
       mapRef.current = map;
-      clusterRef.current = cluster;
     })();
 
-    return () => {
-      disposed = true;
-    };
+    return () => { disposed = true; };
   }, [enabled]);
 
-  // 2) (re)draw markers whenever the data changes
   useEffect(() => {
     if (!enabled) return;
     let disposed = false;
@@ -87,11 +56,14 @@ map.on("click", (e) => {
       const L = await import("leaflet");
       if (disposed) return;
       const map = mapRef.current as ReturnType<typeof L.map> | null;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const cluster = clusterRef.current as any;
-      if (!map || !cluster) return;
+      if (!map) return;
 
-      cluster.clearLayers();
+      // Limpiar marcadores anteriores
+      for (const m of markersRef.current) {
+        (m as ReturnType<typeof L.marker>).remove();
+      }
+      markersRef.current = [];
+
       if (markers.length === 0) return;
 
       const pinIcon = L.divIcon({
@@ -112,19 +84,19 @@ map.on("click", (e) => {
         });
         marker.on("mouseover", () => marker.openPopup());
         marker.on("click", () => clickRef.current?.(m));
-        cluster.addLayer(marker);
+        marker.addTo(map as ReturnType<typeof L.map>);
+        markersRef.current.push(marker);
         bounds.push([m.lat, m.lng]);
       }
-      if (bounds.length > 0) map.fitBounds(bounds, { padding: [60, 60], maxZoom: 14 });
+      if (bounds.length > 0) {
+        (map as ReturnType<typeof L.map>).fitBounds(bounds, { padding: [60, 60], maxZoom: 14 });
+      }
     })();
 
-    return () => {
-      disposed = true;
-    };
+    return () => { disposed = true; };
   }, [markers, enabled]);
 }
 
-/** Popup markup - thumbnail (~400x300) + filename + date. */
 function popupHtml(m: Marker): string {
   const date = new Date(m.taken_at);
   const label = Number.isNaN(date.getTime())
@@ -143,7 +115,6 @@ function popupHtml(m: Marker): string {
 function escapeHtml(s: string): string {
   return s.replace(
     /[&<>"']/g,
-    (c) =>
-      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] as string,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] as string,
   );
 }

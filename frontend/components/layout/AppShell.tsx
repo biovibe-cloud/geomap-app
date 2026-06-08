@@ -2,20 +2,15 @@
 import type { ReactNode } from "react";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
+import { ShellProvider, useShell } from "@/contexts/ShellContext";
 
-/**
- * AppShell — the authenticated chrome: left rail + top bar + scrollable
- * content area. Wrap page content with it from a route-group layout, e.g.
- * `app/(app)/layout.tsx`.
- *
- * The content area is the only scroll region; pages render straight into it.
- */
-export function AppShell({ children }: { children: ReactNode }) {
+function AppShellInner({ children }: { children: ReactNode }) {
+  const { onUpload, onNewMap } = useShell();
   return (
     <div className="flex h-dvh w-full bg-bg">
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
-        <Header />
+        <Header onUpload={onUpload} onNewMap={onNewMap} />
         <main className="min-h-0 flex-1 overflow-y-auto px-[30px] pb-[30px] pt-[26px]">
           {children}
         </main>
@@ -24,3 +19,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   );
 }
 
+export function AppShell({ children }: { children: ReactNode }) {
+  return (
+    <ShellProvider>
+      <AppShellInner>{children}</AppShellInner>
+    </ShellProvider>
+  );
+}

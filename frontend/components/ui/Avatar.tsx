@@ -1,3 +1,4 @@
+"use client";
 import { cn } from "@/lib/cn";
 
 /** User avatar — initials fallback. Pass `src` to show a photo. */
@@ -35,3 +36,4 @@ export function Avatar({
     </div>
   );
 }
+

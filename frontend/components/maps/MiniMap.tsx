@@ -1,3 +1,4 @@
+"use client";
 import { cn } from "@/lib/cn";
 
 /**
@@ -95,3 +96,4 @@ export function MiniMap({
     </div>
   );
 }
+

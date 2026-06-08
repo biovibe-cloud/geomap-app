@@ -1,3 +1,4 @@
+"use client";
 import { Button } from "@/components/ui/Button";
 import { MapPlus, Plus } from "@/components/ui/Icons";
 
@@ -21,3 +22,4 @@ export function EmptyState({ onCreateMap }: { onCreateMap?: () => void }) {
     </div>
   );
 }
+

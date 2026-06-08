@@ -1,3 +1,4 @@
+"use client";
 /** Loading skeleton: shimmering stat cards + map cards. */
 function Shimmer({ className = "" }: { className?: string }) {
   return <div className={`animate-pulse rounded bg-surface-3 ${className}`} />;
@@ -38,3 +39,4 @@ export function MapsSkeleton() {
     </div>
   );
 }
+

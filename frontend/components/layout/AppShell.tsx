@@ -1,3 +1,4 @@
+"use client";
 import type { ReactNode } from "react";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
@@ -22,3 +23,4 @@ export function AppShell({ children }: { children: ReactNode }) {
     </div>
   );
 }
+

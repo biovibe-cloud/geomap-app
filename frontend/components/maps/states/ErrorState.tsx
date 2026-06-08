@@ -1,3 +1,4 @@
+"use client";
 import { Button } from "@/components/ui/Button";
 import { AlertTriangle } from "@/components/ui/Icons";
 
@@ -28,3 +29,4 @@ export function ErrorState({
     </div>
   );
 }
+

@@ -1,3 +1,4 @@
+"use client";
 import { cn } from "@/lib/cn";
 import { Globe, Lock } from "@/components/ui/Icons";
 import type { MapStatus, Visibility } from "@/lib/types";
@@ -45,3 +46,4 @@ export function VisibilityChip({ visibility }: { visibility: Visibility }) {
     </span>
   );
 }
+

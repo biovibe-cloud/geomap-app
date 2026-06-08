@@ -1,3 +1,4 @@
+"use client";
 import type { SVGProps } from "react";
 
 /**
@@ -249,3 +250,4 @@ export const Check = (p: IconProps) => (
     <path d="M20 6 9 17l-5-5" />
   </svg>
 );
+

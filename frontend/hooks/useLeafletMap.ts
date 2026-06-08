@@ -62,8 +62,7 @@ map.on("click", (e) => {
       });
 
       // markercluster augments L at runtime
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      // @ts-expect-error markercluster augments L at runtime
+      
       const cluster = L.markerClusterGroup({
         showCoverageOnHover: false,
         maxClusterRadius: 48,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import type { Marker } from "@/lib/types";
 
 export function useLeafletMap(
@@ -16,14 +16,54 @@ export function useLeafletMap(
   const onMapClickRef = useRef(onMapClick);
   const mapRef = useRef<unknown>(null);
   const markersRef = useRef<unknown[]>([]);
-  const [mapReady, setMapReady] = useState(false);
+  const [, forceUpdate] = useState(0);
 
   useEffect(() => {
     clickRef.current = onMarkerClick;
     onMapClickRef.current = onMapClick;
   });
 
-  // Effect 1: inicializar el mapa una sola vez
+  const drawMarkers = useCallback(async (currentMarkers: Marker[]) => {
+    const L = await import("leaflet");
+    const map = mapRef.current as ReturnType<typeof L.map> | null;
+    if (!map) return;
+
+    for (const m of markersRef.current) {
+      (m as ReturnType<typeof L.marker>).remove();
+    }
+    markersRef.current = [];
+
+    if (currentMarkers.length === 0) return;
+
+    const pinIcon = L.divIcon({
+      className: "gm-leaflet-pin",
+      html: '<span class="gm-pin-inner"></span>',
+      iconSize: [22, 22],
+      iconAnchor: [11, 22],
+      popupAnchor: [0, -20],
+    });
+
+    const bounds: [number, number][] = [];
+    for (const m of currentMarkers) {
+      const marker = L.marker([m.lat, m.lng], { icon: pinIcon });
+      marker.bindPopup(popupHtml(m), {
+        className: "gm-popup",
+        minWidth: 220,
+        closeButton: false,
+      });
+      marker.on("mouseover", () => marker.openPopup());
+      marker.on("click", () => clickRef.current?.(m));
+      marker.addTo(map as ReturnType<typeof L.map>);
+      markersRef.current.push(marker);
+      bounds.push([m.lat, m.lng]);
+    }
+
+    if (bounds.length > 0) {
+      (map as ReturnType<typeof L.map>).fitBounds(bounds, { padding: [60, 60], maxZoom: 14 });
+    }
+  }, []);
+
+  // Effect 1: inicializar el mapa
   useEffect(() => {
     if (!enabled) return;
     if (mapRef.current) return;
@@ -47,57 +87,17 @@ export function useLeafletMap(
       });
 
       mapRef.current = map;
-      if (!disposed) setMapReady(true);
+      if (!disposed) forceUpdate(n => n + 1);
     })();
 
     return () => { disposed = true; };
-  }, [enabled]);
+  }, [enabled, forceUpdate]);
 
-  // Effect 2: dibujar marcadores cuando el mapa está listo Y los markers cambian
+  // Effect 2: dibujar marcadores
   useEffect(() => {
-    if (!enabled || !mapReady) return;
-
-    (async () => {
-      const L = await import("leaflet");
-      const map = mapRef.current as ReturnType<typeof L.map> | null;
-      if (!map) return;
-
-      // limpiar marcadores anteriores
-      for (const m of markersRef.current) {
-        (m as ReturnType<typeof L.marker>).remove();
-      }
-      markersRef.current = [];
-
-      if (markers.length === 0) return;
-
-      const pinIcon = L.divIcon({
-        className: "gm-leaflet-pin",
-        html: '<span class="gm-pin-inner"></span>',
-        iconSize: [22, 22],
-        iconAnchor: [11, 22],
-        popupAnchor: [0, -20],
-      });
-
-      const bounds: [number, number][] = [];
-      for (const m of markers) {
-        const marker = L.marker([m.lat, m.lng], { icon: pinIcon });
-        marker.bindPopup(popupHtml(m), {
-          className: "gm-popup",
-          minWidth: 220,
-          closeButton: false,
-        });
-        marker.on("mouseover", () => marker.openPopup());
-        marker.on("click", () => clickRef.current?.(m));
-        marker.addTo(map as ReturnType<typeof L.map>);
-        markersRef.current.push(marker);
-        bounds.push([m.lat, m.lng]);
-      }
-
-      if (bounds.length > 0) {
-        (map as ReturnType<typeof L.map>).fitBounds(bounds, { padding: [60, 60], maxZoom: 14 });
-      }
-    })();
-  }, [markers, enabled, mapReady]);
+    if (!enabled || !mapRef.current) return;
+    drawMarkers(markers);
+  }, [markers, enabled, drawMarkers]);
 }
 
 function popupHtml(m: Marker): string {

@@ -55,9 +55,14 @@ export function useLeafletMap(
     (async () => {
       const L = await import("leaflet");
       if (disposed) return;
+     // esperar hasta que el mapa esté inicializado
+      let attempts = 0;
+      while (!mapRef.current && attempts < 10) {
+        await new Promise(r => setTimeout(r, 200));
+        attempts++;
+      }
       const map = mapRef.current as ReturnType<typeof L.map> | null;
       if (!map) return;
-
       // Limpiar marcadores anteriores
       for (const m of markersRef.current) {
         (m as ReturnType<typeof L.marker>).remove();

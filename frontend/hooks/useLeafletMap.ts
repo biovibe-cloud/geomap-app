@@ -16,56 +16,54 @@ export function useLeafletMap(
   const onMapClickRef = useRef(onMapClick);
   const mapRef = useRef<unknown>(null);
   const markersRef = useRef<unknown[]>([]);
-  const pendingMarkersRef = useRef<Marker[]>(markers);
 
   useEffect(() => {
     clickRef.current = onMarkerClick;
     onMapClickRef.current = onMapClick;
   });
 
-  // Siempre actualizar los markers pendientes
-  pendingMarkersRef.current = markers;
-
+  // Effect 1: inicializar el mapa UNA SOLA VEZ
   useEffect(() => {
-    if (!enabled) return;
-    let disposed = false;
+    if (!enabled || mapRef.current) return;
 
     (async () => {
       const L = await import("leaflet");
-      if (disposed) return;
+      const el = document.getElementById("map-container");
+      if (!el || mapRef.current) return;
 
-      // Inicializar mapa si no existe
-      if (!mapRef.current) {
-        const el = document.getElementById("map-container");
-        if (!el) return;
+      const map = L.map(el, { zoomControl: true, attributionControl: false }).setView([20, 0], 2);
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+        maxZoom: 19,
+      }).addTo(map);
 
-        const map = L.map(el, { zoomControl: true, attributionControl: false }).setView([20, 0], 2);
-        L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-          maxZoom: 19,
-        }).addTo(map);
+      map.on("click", (e) => {
+        onMapClickRef.current?.(e.latlng.lat, e.latlng.lng);
+      });
 
-        map.on("click", (e) => {
-          onMapClickRef.current?.(e.latlng.lat, e.latlng.lng);
-        });
+      mapRef.current = map;
+      console.log("[LeafletMap] mapa creado");
+      setTimeout(() => map.invalidateSize(), 200);
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled]);
 
-        mapRef.current = map;
-        console.log("[LeafletMap] mapa creado");
-      }
+  // Effect 2: dibujar markers cuando cambian
+  useEffect(() => {
+    if (!enabled) return;
 
-      if (disposed) return;
+    (async () => {
+      const L = await import("leaflet");
+      const map = mapRef.current as ReturnType<typeof L.map> | null;
+      if (!map) return;
 
-      const map = mapRef.current as ReturnType<typeof L.map>;
-      const currentMarkers = pendingMarkersRef.current;
+      console.log("[LeafletMap] dibujando", markers.length, "markers");
 
-      console.log("[LeafletMap] dibujando", currentMarkers.length, "markers");
-
-      // Limpiar markers anteriores
       for (const m of markersRef.current) {
         (m as ReturnType<typeof L.marker>).remove();
       }
       markersRef.current = [];
 
-      if (currentMarkers.length === 0) return;
+      if (markers.length === 0) return;
 
       const pinIcon = L.divIcon({
         className: "gm-leaflet-pin",
@@ -76,7 +74,7 @@ export function useLeafletMap(
       });
 
       const bounds: [number, number][] = [];
-      for (const m of currentMarkers) {
+      for (const m of markers) {
         const marker = L.marker([m.lat, m.lng], { icon: pinIcon });
         marker.bindPopup(popupHtml(m), {
           className: "gm-popup",
@@ -91,12 +89,12 @@ export function useLeafletMap(
       }
 
       if (bounds.length > 0) {
-        map.fitBounds(bounds, { padding: [60, 60], maxZoom: 14 });
+        setTimeout(() => {
+          map.fitBounds(bounds, { padding: [60, 60], maxZoom: 14 });
+        }, 300);
       }
     })();
-
-    return () => { disposed = true; };
-  }, [enabled, markers]);
+  }, [markers, enabled]);
 }
 
 function popupHtml(m: Marker): string {

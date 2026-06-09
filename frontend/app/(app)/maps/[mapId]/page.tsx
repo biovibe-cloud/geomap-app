@@ -28,7 +28,7 @@ export default function MapPage() {
         isOpen={uploaderOpen}
         onClose={() => {
           setUploaderOpen(false);
-          refetch();
+          setTimeout(() => refetch(), 2000);
         }}
         mapId={mapId}
         onUpload={async () => {}}

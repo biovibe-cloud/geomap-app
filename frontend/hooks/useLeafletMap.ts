@@ -14,16 +14,20 @@ export function useLeafletMap(
   const { enabled, onMarkerClick, onMapClick } = options;
   const clickRef = useRef(onMarkerClick);
   const onMapClickRef = useRef(onMapClick);
+  const mapRef = useRef<unknown>(null);
+  const markersRef = useRef<unknown[]>([]);
+  const mapReadyRef = useRef(false);
+
   useEffect(() => {
     clickRef.current = onMarkerClick;
     onMapClickRef.current = onMapClick;
   });
 
-  const mapRef = useRef<unknown>(null);
-  const markersRef = useRef<unknown[]>([]);
-
+  // Effect 1: inicializar el mapa una sola vez
   useEffect(() => {
     if (!enabled) return;
+    if (mapReadyRef.current) return;
+
     let disposed = false;
 
     (async () => {
@@ -43,27 +47,30 @@ export function useLeafletMap(
       });
 
       mapRef.current = map;
+      mapReadyRef.current = true;
     })();
 
     return () => { disposed = true; };
   }, [enabled]);
 
+  // Effect 2: dibujar marcadores cuando cambian
   useEffect(() => {
     if (!enabled) return;
-    let disposed = false;
 
     (async () => {
       const L = await import("leaflet");
-      if (disposed) return;
-     // esperar hasta que el mapa esté inicializado
+
+      // esperar a que el mapa esté listo
       let attempts = 0;
-      while (!mapRef.current && attempts < 10) {
-        await new Promise(r => setTimeout(r, 200));
+      while (!mapReadyRef.current && attempts < 20) {
+        await new Promise(r => setTimeout(r, 150));
         attempts++;
       }
+
       const map = mapRef.current as ReturnType<typeof L.map> | null;
       if (!map) return;
-      // Limpiar marcadores anteriores
+
+      // limpiar marcadores anteriores
       for (const m of markersRef.current) {
         (m as ReturnType<typeof L.marker>).remove();
       }
@@ -93,12 +100,11 @@ export function useLeafletMap(
         markersRef.current.push(marker);
         bounds.push([m.lat, m.lng]);
       }
+
       if (bounds.length > 0) {
         (map as ReturnType<typeof L.map>).fitBounds(bounds, { padding: [60, 60], maxZoom: 14 });
       }
     })();
-
-    return () => { disposed = true; };
   }, [markers, enabled]);
 }
 

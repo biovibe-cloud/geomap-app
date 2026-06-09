@@ -26,12 +26,9 @@ export default function MapPage() {
       />
       <Uploader
         isOpen={uploaderOpen}
-        onClose={() => {
-          setUploaderOpen(false);
-          setTimeout(() => refetch(), 2000);
-        }}
+        onClose={() => setUploaderOpen(false)}
         mapId={mapId}
-        onUpload={async () => {}}
+        onUpload={async () => { refetch(); }}
       />
     </div>
   );

@@ -348,7 +348,7 @@ def unpublish_map(
 async def upload_image(
     request: Request,
     file: UploadFile = File(...),
-    map_id: str = None,
+    map_id: str = Form(None),
     current_user: UserObj = Depends(get_current_user)
 ):
     # Rate limit simple por user_id

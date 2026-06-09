@@ -87,6 +87,7 @@ export function useLeafletMap(
       });
 
       mapRef.current = map;
+      console.log("[LeafletMap] mapa inicializado, markers:", markers.length);
       if (!disposed) forceUpdate(n => n + 1);
     })();
 
@@ -96,6 +97,7 @@ export function useLeafletMap(
   // Effect 2: dibujar marcadores
   useEffect(() => {
     if (!enabled || !mapRef.current) return;
+    console.log("[LeafletMap] dibujando markers:", markers.length, "mapRef:", !!mapRef.current);
     drawMarkers(markers);
   }, [markers, enabled, drawMarkers]);
 }

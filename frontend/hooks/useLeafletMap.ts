@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Marker } from "@/lib/types";
 
 export function useLeafletMap(
@@ -16,7 +16,7 @@ export function useLeafletMap(
   const onMapClickRef = useRef(onMapClick);
   const mapRef = useRef<unknown>(null);
   const markersRef = useRef<unknown[]>([]);
-  const mapReadyRef = useRef(false);
+  const [mapReady, setMapReady] = useState(false);
 
   useEffect(() => {
     clickRef.current = onMarkerClick;
@@ -26,7 +26,7 @@ export function useLeafletMap(
   // Effect 1: inicializar el mapa una sola vez
   useEffect(() => {
     if (!enabled) return;
-    if (mapReadyRef.current) return;
+    if (mapRef.current) return;
 
     let disposed = false;
 
@@ -47,26 +47,18 @@ export function useLeafletMap(
       });
 
       mapRef.current = map;
-      mapReadyRef.current = true;
+      if (!disposed) setMapReady(true);
     })();
 
     return () => { disposed = true; };
   }, [enabled]);
 
-  // Effect 2: dibujar marcadores cuando cambian
+  // Effect 2: dibujar marcadores cuando el mapa está listo Y los markers cambian
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || !mapReady) return;
 
     (async () => {
       const L = await import("leaflet");
-
-      // esperar a que el mapa esté listo
-      let attempts = 0;
-      while (!mapReadyRef.current && attempts < 20) {
-        await new Promise(r => setTimeout(r, 150));
-        attempts++;
-      }
-
       const map = mapRef.current as ReturnType<typeof L.map> | null;
       if (!map) return;
 
@@ -105,7 +97,7 @@ export function useLeafletMap(
         (map as ReturnType<typeof L.map>).fitBounds(bounds, { padding: [60, 60], maxZoom: 14 });
       }
     })();
-  }, [markers, enabled]);
+  }, [markers, enabled, mapReady]);
 }
 
 function popupHtml(m: Marker): string {

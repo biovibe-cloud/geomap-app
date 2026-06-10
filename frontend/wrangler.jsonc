@@ -1,5 +1,5 @@
 {
-  "name": "geomap",
+  "name": "geomap-app",
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-06-07",
   "compatibility_flags": ["nodejs_compat"],

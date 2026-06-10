@@ -41,7 +41,7 @@ export function useLeafletMap(
       });
 
       mapRef.current = map;
-      console.log("[LeafletMap] mapa creado");
+  
       setTimeout(() => map.invalidateSize(), 200);
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -56,7 +56,6 @@ export function useLeafletMap(
       const map = mapRef.current as ReturnType<typeof L.map> | null;
       if (!map) return;
 
-      console.log("[LeafletMap] dibujando", markers.length, "markers");
 
       for (const m of markersRef.current) {
         (m as ReturnType<typeof L.marker>).remove();

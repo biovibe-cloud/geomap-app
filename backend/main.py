@@ -550,13 +550,18 @@ def get_unlocated_images(
         })
     return {"images": result}
 
+class LocationUpdate(BaseModel):
+    lat: float
+    lng: float
+
 @app.patch("/images/{image_id}/location")
 def update_image_location(
     image_id: str,
-    lat: float,
-    lng: float,
+    body: LocationUpdate,
     current_user: UserObj = Depends(get_current_user)
 ):
+    lat = body.lat
+    lng = body.lng
     result = supabase.table("images")\
         .select("id")\
         .eq("id", image_id)\

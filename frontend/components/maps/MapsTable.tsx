@@ -29,7 +29,8 @@ function KebabMenu({ map, actions }: { map: MapSummary; actions?: MapActions }) 
         <Kebab size={16} />
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-1 w-44 rounded-card border border-border bg-surface shadow-pop">
+        <div className="absolute right-0 z-50 w-44 rounded-card border border-border bg-surface shadow-pop"
+          style={{ bottom: "calc(100% + 4px)" }}>
           <button
             type="button"
             onClick={() => { setOpen(false); actions?.onDelete?.(map); }}

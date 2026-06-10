@@ -90,6 +90,7 @@ export function useLeafletMap(
 
       if (bounds.length > 0) {
         setTimeout(() => {
+          map.invalidateSize();
           map.fitBounds(bounds, { padding: [60, 60], maxZoom: 14 });
         }, 300);
       }

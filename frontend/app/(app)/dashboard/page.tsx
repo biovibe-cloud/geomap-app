@@ -41,7 +41,18 @@ export default function MapsPage() {
       actions={{
         onOpen: (m) => { router.push(`/maps/${m.id}`); },
         onManageEmbed: (m) => { router.push(`/maps/${m.id}/embed`); },
-        onDelete: () => {},
+        onDelete: async (m) => {
+          if (!confirm(`¿Eliminar el mapa "${m.name}"? Esta acción no se puede deshacer.`)) return;
+          try {
+            await fetch(`${process.env.NEXT_PUBLIC_API_URL}/maps/${m.id}`, {
+              method: "DELETE",
+              headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+            });
+            refetch();
+          } catch {
+            alert("No se pudo eliminar el mapa.");
+          }
+        },
       }}
     />
   );

@@ -1,10 +1,47 @@
 "use client";
-
+import { useState, useRef, useEffect } from "react";
 import { MiniMap } from "./MiniMap";
 import { StatusBadge, VisibilityLabel } from "./Badges";
 import { MapActions, formatDate, formatNumber } from "./actions";
-import { Eye, Kebab } from "@/components/ui/Icons";
+import { Eye, Kebab, Trash } from "@/components/ui/Icons";
 import type { MapSummary } from "@/lib/types";
+
+function KebabMenu({ map, actions }: { map: MapSummary; actions?: MapActions }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        aria-label="Más acciones"
+        onClick={() => setOpen(o => !o)}
+        className="flex h-[30px] w-[30px] items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-surface-3 hover:text-ink-soft"
+      >
+        <Kebab size={16} />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full z-50 mt-1 w-44 rounded-card border border-border bg-surface shadow-pop">
+          <button
+            type="button"
+            onClick={() => { setOpen(false); actions?.onDelete?.(map); }}
+            className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-[13px] text-danger hover:bg-danger-soft"
+          >
+            <Trash size={15} /> Eliminar mapa
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function Row({ map, actions }: { map: MapSummary; actions?: MapActions }) {
   return (
@@ -38,13 +75,7 @@ function Row({ map, actions }: { map: MapSummary; actions?: MapActions }) {
           >
             <Eye size={14} /> Ver
           </button>
-          <button
-            type="button"
-            aria-label="Más acciones"
-            className="flex h-[30px] w-[30px] items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-surface-3 hover:text-ink-soft"
-          >
-            <Kebab size={16} />
-          </button>
+          <KebabMenu map={map} actions={actions} />
         </div>
       </td>
     </tr>

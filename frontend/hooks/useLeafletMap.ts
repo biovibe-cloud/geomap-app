@@ -68,9 +68,9 @@ export function useLeafletMap(
       const pinIcon = L.divIcon({
         className: "gm-leaflet-pin",
         html: '<span class="gm-pin-inner"></span>',
-        iconSize: [22, 22],
-        iconAnchor: [11, 22],
-        popupAnchor: [0, -20],
+        iconSize: [11, 11],
+        iconAnchor: [5, 11],
+        popupAnchor: [0, -10],
       });
 
       const bounds: [number, number][] = [];

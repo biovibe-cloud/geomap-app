@@ -89,3 +89,70 @@ body {
 * {
   border-color: var(--border);
 }
+
+/* ============================================================
+   Leaflet custom markers y popups
+   ============================================================ */
+
+.gm-leaflet-pin {
+  background: none;
+  border: none;
+}
+
+.gm-pin-inner {
+  display: block;
+  width: 22px;
+  height: 22px;
+  background: var(--primary);
+  border: 2px solid white;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+.gm-popup .leaflet-popup-content-wrapper {
+  border-radius: 10px;
+  padding: 0;
+  overflow: hidden;
+  box-shadow: var(--shadow-pop);
+  border: 0.5px solid var(--border);
+}
+
+.gm-popup .leaflet-popup-content {
+  margin: 0;
+  width: auto !important;
+}
+
+.gm-popup .leaflet-popup-tip-container {
+  display: none;
+}
+
+.gm-popup-card img {
+  display: block;
+  width: 220px;
+  height: 150px;
+  object-fit: cover;
+}
+
+.gm-popup-meta {
+  padding: 8px 10px;
+  background: var(--surface);
+}
+
+.gm-popup-name {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.gm-popup-date {
+  display: block;
+  font-size: 11.5px;
+  color: var(--ink-muted);
+  margin-top: 2px;
+}

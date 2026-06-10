@@ -562,21 +562,21 @@ def update_image_location(
 ):
     lat = body.lat
     lng = body.lng
-    print(f"[location] image_id={image_id} lat={lat} lng={lng} user={current_user.id}")
+    
     result = supabase.table("images")\
         .select("id")\
         .eq("id", image_id)\
         .eq("user_id", current_user.id)\
         .execute()
-    print(f"[location] select result={result.data}")
+    
     if not result.data:
         raise HTTPException(status_code=404, detail="Imagen no encontrada")
-    update_result = supabase.table("images").update({
+    supabase.table("images").update({
         "lat": round(lat, 7),
         "lng": round(lng, 7),
         "has_gps": True
     }).eq("id", image_id).execute()
-    print(f"[location] update result={update_result.data}")
+    
     return {"message": "Ubicación actualizada", "lat": lat, "lng": lng}
 @app.get("/maps/{map_id}/embed/access-log")
 def get_access_log(
